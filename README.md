@@ -1,9 +1,11 @@
-# WIP 👷‍♂️🏗️ - Cows Challenge 🐄 — Keypoints + Identificação (YOLO Pose)
+# WIP 👷‍♂️🏗️
+
+# Cows Challenge 🐄 — Keypoints + Identificação (YOLO Pose)
 
 Projeto de visão computacional para **detecção de keypoints em vacas (vista superior)** com **YOLO Pose (Ultralytics)**, extração de **features geométricas** e **classificação/identificação** de cada vaca.
 
 <p align="center">
-  <img src="./docs/logo.png" alt="Logo do projeto" width="420" />
+  <img src="./docs/logo.png" alt="Logo do projeto" width="700" />
 </p>
 
 ## Objetivos
