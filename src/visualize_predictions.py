@@ -3,24 +3,15 @@ from pathlib import Path
 import random
 import cv2
 from ultralytics import YOLO
+import sys
 
-# Keypoint connections based on the project spec
-SKELETON = [
-    [0, 1], # head-neck
-    [1, 2], # neck-withers
-    [2, 3], # withers-back
-    [3, 4], # back-hook
-    [4, 5], # hook-hip_ridge
-    [5, 6], # hip_ridge-tail_head
-    [5, 7]  # hip_ridge-pin
-]
-
-NAMES = ["head", "neck", "withers", "back", "hook", "hip_ridge", "tail_head", "pin"]
+# Local imports for shared constants
+from core_utils import TARGET_KPS, SKELETON
 
 def main():
     parser = argparse.ArgumentParser(description="Visualize YOLO Pose predictions")
     parser.add_argument("--model", type=str, default="outputs/models/best_pose.pt", help="Path to best.pt")
-    parser.add_argument("--data-dir", type=str, default="data/processed_yolo_pose/images/test", help="Test images dir")
+    parser.add_argument("--data-dir", type=str, default="data/subset_yolo_pose/images/val", help="Test images dir")
     parser.add_argument("--num-samples", type=int, default=30, help="Number of images to visualize")
     args = parser.parse_args()
     
@@ -52,17 +43,14 @@ def main():
         try:
             results = model.predict(source=str(img_path), save=False, verbose=False)
             
-            # Use original image
             img = cv2.imread(str(img_path))
             
             for result in results:
-                # Bounding boxes
                 boxes = result.boxes
                 for box in boxes:
                     x1, y1, x2, y2 = map(int, box.xyxy[0])
                     cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     
-                # Keypoints
                 keypoints = result.keypoints
                 if keypoints is not None and keypoints.xy is not None and len(keypoints.xy) > 0:
                     for kp_set in keypoints.xy:
@@ -71,16 +59,16 @@ def main():
                             x, y = map(int, pt)
                             if x > 0 and y > 0:
                                 cv2.circle(img, (x, y), 5, (0, 0, 255), -1)
-                                cv2.putText(img, NAMES[i], (x+5, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+                                kp_name = TARGET_KPS[i] if i < len(TARGET_KPS) else str(i)
+                                cv2.putText(img, kp_name, (x+5, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
                             pts.append((x, y))
                             
-                        # Draw skeleton
                         for sk in SKELETON:
-                            pt1 = pts[sk[0]]
-                            pt2 = pts[sk[1]]
-                            # Make sure both points were detected (x,y > 0)
-                            if pt1[0] > 0 and pt1[1] > 0 and pt2[0] > 0 and pt2[1] > 0:
-                                cv2.line(img, pt1, pt2, (255, 0, 0), 2)
+                            if sk[0] < len(pts) and sk[1] < len(pts):
+                                pt1 = pts[sk[0]]
+                                pt2 = pts[sk[1]]
+                                if pt1[0] > 0 and pt1[1] > 0 and pt2[0] > 0 and pt2[1] > 0:
+                                    cv2.line(img, pt1, pt2, (255, 0, 0), 2)
                                 
             out_file = out_dir / f"pred_{img_path.name}"
             cv2.imwrite(str(out_file), img)
