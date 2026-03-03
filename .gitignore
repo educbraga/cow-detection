@@ -1,0 +1,27 @@
+# Project specific
+data/
+outputs/
+runs/
+*.pt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv
+venv/
+ENV/
+env/
+.env
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# ML/DL
+*.cache
+.ultralytics/
+
+# OS
+.DS_Store
+Thumbs.db

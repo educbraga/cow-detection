@@ -154,3 +154,7 @@ wheel==0.40.0
 wrapt==2.1.1
 xmljson==0.2.1
 zipp==3.23.0
+ultralytics==8.1.0
+matplotlib
+seaborn
+jupyter
