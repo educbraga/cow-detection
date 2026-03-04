@@ -88,5 +88,36 @@ def main():
     print(f"Peso encontrado: {weight_src}")
     print(f"Modelo copiado para: {dest}")
 
+    # --- Print metrics natively to console ---
+    print("\n" + "="*50)
+    print("MÉTRICAS FINAIS DO MODELO (Validação da Última Época):")
+    try:
+        import numpy as np
+        metrics = results if hasattr(results, 'box') else getattr(model, 'metrics', None)
+        if metrics:
+            if hasattr(metrics, 'box') and getattr(metrics, 'box', None):
+                print("--- Bounding Box ---")
+                print(f"  mAP50:    {metrics.box.map50:.4f}")
+                print(f"  mAP50-95: {metrics.box.map:.4f}")
+                
+                if hasattr(metrics.box, 'p'): print(f"  Precision:{np.mean(metrics.box.p):.4f}")
+                if hasattr(metrics.box, 'r'): print(f"  Recall:   {np.mean(metrics.box.r):.4f}")
+                if hasattr(metrics.box, 'f1'): print(f"  F1-Score: {np.mean(metrics.box.f1):.4f}")
+                
+            if hasattr(metrics, 'pose') and getattr(metrics, 'pose', None):
+                print("--- Keypoint Pose ---")
+                print(f"  mAP50:    {metrics.pose.map50:.4f}")
+                print(f"  mAP50-95: {metrics.pose.map:.4f}")
+                
+                if hasattr(metrics.pose, 'p'): print(f"  Precision:{np.mean(metrics.pose.p):.4f}")
+                if hasattr(metrics.pose, 'r'): print(f"  Recall:   {np.mean(metrics.pose.r):.4f}")
+                if hasattr(metrics.pose, 'f1'): print(f"  F1-Score: {np.mean(metrics.pose.f1):.4f}")
+                
+        else:
+            print(" - (Métricas em memória indisponíveis, verifique outputs/reports ou val.csv)")
+    except Exception as e:
+        print(f" - (Erro ao ler métricas online: {e})")
+    print("="*50 + "\n")
+
 if __name__ == "__main__":
     main()
