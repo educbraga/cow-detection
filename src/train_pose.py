@@ -49,16 +49,44 @@ def main():
         device="cpu" # To ensure it runs everywhere, or omit for auto
     )
     
-    # Save exported best model to outputs/models
-    try:
-        best_model_path = Path(output_project) / run_name / "weights" / "best.pt"
-        if best_model_path.exists():
-            dest = Path("outputs/models/best_pose.pt")
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(best_model_path, dest)
-            print(f"Best model saved to {dest}")
-    except Exception as e:
-        print(f"Failed to copy best model to outputs/models: {e}")
+    # --- Exportar melhor modelo para outputs/models/best_pose.pt ---
+    save_dir = Path(str(getattr(results, 'save_dir', Path(output_project) / run_name)))
+    print(f"\nRun save_dir: {save_dir}")
+
+    if not save_dir.exists():
+        print(f"ERRO: Diretório do run não encontrado: {save_dir}")
+        print("O treino pode ter falhado. Verifique os logs acima.")
+        return
+
+    weights_dir = save_dir / "weights"
+    weight_src = None
+
+    # 1) best.pt
+    if (weights_dir / "best.pt").exists():
+        weight_src = weights_dir / "best.pt"
+    # 2) last.pt
+    elif (weights_dir / "last.pt").exists():
+        weight_src = weights_dir / "last.pt"
+    # 3) fallback: glob
+    elif weights_dir.exists():
+        best_glob = sorted(weights_dir.glob("best*.pt"))
+        if best_glob:
+            weight_src = best_glob[0]
+        else:
+            all_pts = sorted(weights_dir.glob("*.pt"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if all_pts:
+                weight_src = all_pts[0]
+
+    if weight_src is None:
+        print(f"ERRO: Nenhum peso (.pt) encontrado em {weights_dir}")
+        print("Abortando sem criar outputs/models/best_pose.pt.")
+        return
+
+    dest = Path("outputs/models/best_pose.pt")
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(weight_src, dest)
+    print(f"Peso encontrado: {weight_src}")
+    print(f"Modelo copiado para: {dest}")
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,6 @@
 import argparse
 import json
-import math
+import sys
 from pathlib import Path
 from ultralytics import YOLO
 
@@ -20,16 +20,9 @@ def main():
     args = parser.parse_args()
     
     if not Path(args.model).exists():
-        print(f"Model not found: {args.model}")
-        print("Creating mock report for notebook quickstart flow...")
-        # Since running without images will fail YOLO validation anyway, 
-        # mock standard output for notebook progression if model failed
-        Path("outputs/reports").mkdir(exist_ok=True)
-        with open("outputs/reports/metrics.json", "w") as f:
-            json.dump({"map50": 0.85, "map50_95": 0.55, "PCK@0.1": 0.90}, f)
-        with open("outputs/reports/summary.md", "w") as f:
-            f.write("# Evaluation Summary\nMock evaluation completed. Metrics saved in `metrics.json`.")
-        return
+        print(f"ERRO: Modelo não encontrado em {args.model}")
+        print("Rode train_pose.py primeiro para gerar o modelo, ou informe --model com o caminho correto.")
+        sys.exit(1)
 
     try:
         model = YOLO(args.model)

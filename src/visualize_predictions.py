@@ -18,25 +18,30 @@ def main():
     out_dir = Path("outputs/vis_samples")
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    img_dir = Path(args.data_dir)
-    if not img_dir.exists():
-        print(f"Data dir {img_dir} not found. Ensure dataset is converted.")
-        return
-        
-    images = list(img_dir.glob("*.jpg")) + list(img_dir.glob("*.png"))
-    if not images:
-        print(f"No images in {img_dir}.")
-        return
-        
-    if len(images) > args.num_samples:
-        images = random.sample(images, args.num_samples)
-        
+    if not Path(args.model).exists():
+        print(f"ERRO: Modelo não encontrado em {args.model}")
+        print("Rode train_pose.py primeiro para gerar o modelo, ou informe --model com o caminho correto.")
+        sys.exit(1)
+
     try:
         model = YOLO(args.model)
     except Exception as e:
         print(f"Could not load model {args.model}: {e}")
-        return
+        sys.exit(1)
         
+    img_dir = Path(args.data_dir)
+    if not img_dir.exists():
+        print(f"Data dir {img_dir} not found. Ensure dataset is converted.")
+        sys.exit(1)
+        
+    images = list(img_dir.glob("*.jpg")) + list(img_dir.glob("*.png"))
+    if not images:
+        print(f"No images in {img_dir}.")
+        sys.exit(1)
+        
+    if len(images) > args.num_samples:
+        images = random.sample(images, args.num_samples)
+
     print(f"Generating visualizations for {len(images)} images in {out_dir}")
     
     for img_path in images:
