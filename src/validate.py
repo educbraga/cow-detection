@@ -103,4 +103,5 @@ def validate(input_dir="Key_points", raw_dir="data/raw_images", output_report="o
     print(f"Report saved to {output_path}")
 
 if __name__ == "__main__":
-    validate()
+    from core_utils import KEYPOINTS_DIR, RAW_IMAGES_DIR, OUTPUTS_DIR
+    validate(input_dir=KEYPOINTS_DIR, raw_dir=RAW_IMAGES_DIR, output_report=OUTPUTS_DIR / "reports" / "validation_report.json")

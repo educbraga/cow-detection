@@ -127,4 +127,5 @@ def make_subset(input_dir="Key_points", output_dir="data/subset_yolo_pose", raw_
     print(f"Created subset of {subset_size} images to {output_dir}")
 
 if __name__ == "__main__":
-    make_subset()
+    from core_utils import BASE_DIR, KEYPOINTS_DIR, RAW_IMAGES_DIR
+    make_subset(input_dir=KEYPOINTS_DIR, output_dir=BASE_DIR / "data" / "subset_yolo_pose", raw_dir=RAW_IMAGES_DIR)

@@ -2,6 +2,11 @@ import re
 import urllib.parse
 from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+RAW_IMAGES_DIR = BASE_DIR / "data" / "raw_images"
+KEYPOINTS_DIR = BASE_DIR / "Key_points"
+OUTPUTS_DIR = BASE_DIR / "outputs"
+
 TARGET_KPS = ["withers", "back", "hook up", "hook down", "hip", "tail head", "pin up", "pin down"]
 
 KP_MAPPING = {k: k for k in TARGET_KPS}
@@ -43,7 +48,7 @@ def extract_image_ref(data):
         img_url = data.get("data", {}).get("img", "")
     return img_url
 
-def resolve_image_path(image_ref, raw_dir="data/raw_images"):
+def resolve_image_path(image_ref, raw_dir=RAW_IMAGES_DIR):
     """
     Takes an image reference from Label Studio and attempts to find it in the raw_dir.
     """

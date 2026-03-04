@@ -100,4 +100,5 @@ def inspect_dataset(input_dir="Key_points", raw_dir="data/raw_images", report_di
     print(f"Inspection complete. Repots saved to {out_dir}")
 
 if __name__ == "__main__":
-    inspect_dataset()
+    from core_utils import KEYPOINTS_DIR, RAW_IMAGES_DIR, OUTPUTS_DIR
+    inspect_dataset(input_dir=KEYPOINTS_DIR, raw_dir=RAW_IMAGES_DIR, report_dir=OUTPUTS_DIR / "reports")

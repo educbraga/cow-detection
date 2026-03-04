@@ -102,4 +102,5 @@ def run_sanity_check(input_dir="Key_points", raw_dir="data/raw_images", out_dir=
         print(f"Saved sanity sample: {out_file}")
 
 if __name__ == "__main__":
-    run_sanity_check()
+    from core_utils import KEYPOINTS_DIR, RAW_IMAGES_DIR, OUTPUTS_DIR
+    run_sanity_check(input_dir=KEYPOINTS_DIR, raw_dir=RAW_IMAGES_DIR, out_dir=OUTPUTS_DIR / "vis_samples")

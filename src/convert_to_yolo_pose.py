@@ -137,4 +137,5 @@ def convert_to_yolo_pose(input_dir="Key_points", output_dir="data/processed_yolo
     print(f"Converted dataset to {output_dir}")
 
 if __name__ == "__main__":
-    convert_to_yolo_pose()
+    from core_utils import BASE_DIR, KEYPOINTS_DIR, RAW_IMAGES_DIR
+    convert_to_yolo_pose(input_dir=KEYPOINTS_DIR, output_dir=BASE_DIR / "data" / "processed_yolo_pose", raw_dir=RAW_IMAGES_DIR)
