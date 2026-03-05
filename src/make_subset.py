@@ -3,7 +3,7 @@ import random
 import shutil
 from pathlib import Path
 import yaml
-from core_utils import TARGET_KPS, KP_MAPPING, resolve_image_path, extract_image_ref, parse_annotation_results
+from core_utils import TARGET_KPS, KP_MAPPING, resolve_image_path, extract_image_ref, parse_annotation_results, BASE_DIR
 
 def make_subset(input_dir="Key_points", output_dir="data/subset_yolo_pose", raw_dir="data/raw_images", subset_size=150, seed=42):
     random.seed(seed)
@@ -55,8 +55,9 @@ def make_subset(input_dir="Key_points", output_dir="data/subset_yolo_pose", raw_
         "val": subset_samples[train_end:]
     }
     
-    Path("outputs/reports").mkdir(exist_ok=True)
-    with open("outputs/reports/subset_files.txt", "w") as f:
+    reports_dir = BASE_DIR / "outputs" / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    with open(reports_dir / "subset_files.txt", "w") as f:
         for sample in subset_samples:
             f.write(f"{sample['json_file'].name} -> {sample['img_name']}\n")
             
