@@ -3,7 +3,7 @@ import random
 import shutil
 from pathlib import Path
 import yaml
-from core_utils import TARGET_KPS, KP_MAPPING, resolve_image_path, extract_image_ref, parse_annotation_results, BASE_DIR
+from core_utils import TARGET_KPS, KP_MAPPING, resolve_image_path, extract_image_ref, parse_annotation_results, validate_annotation, BASE_DIR
 
 def make_subset(input_dir="Key_points", output_dir="data/subset_yolo_pose", raw_dir="data/raw_images", subset_size=150, seed=42):
     random.seed(seed)
@@ -37,17 +37,50 @@ def make_subset(input_dir="Key_points", output_dir="data/subset_yolo_pose", raw_
         except Exception as e:
             print(f"Error reading {jf.name}: {e}")
             
-    n = len(valid_samples)
-    print(f"Found {n} valid samples with real images.")
-    if n == 0:
+    print(f"Dataset loaded: {len(valid_samples)} samples with matching images")
+    
+    # --- Annotation quality filtering ---
+    filtered_samples = []
+    rejected_samples = []
+    
+    for sample in valid_samples:
+        data = sample["data"]
+        results = data.get("result", [])
+        annotations = data.get("annotations", [{}])
+        if not results and annotations:
+            results = annotations[0].get("result", [])
+        
+        validation = validate_annotation(results)
+        if validation["valid"]:
+            filtered_samples.append(sample)
+        else:
+            sample["issues"] = validation["issues"]
+            rejected_samples.append(sample)
+    
+    n_rejected = len(rejected_samples)
+    n_valid = len(filtered_samples)
+    print(f"Invalid annotations removed: {n_rejected} (duplicated/missing keypoints)")
+    print(f"Final valid samples: {n_valid}")
+    
+    # Save filtering report
+    reports_dir = BASE_DIR / "outputs" / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    with open(reports_dir / "filtered_annotations.txt", "w") as f:
+        f.write(f"Total with images: {len(valid_samples)}\n")
+        f.write(f"Rejected: {n_rejected}\n")
+        f.write(f"Valid: {n_valid}\n\n")
+        for s in rejected_samples:
+            f.write(f"{s['json_file'].name} -> {s['img_name']}: {'; '.join(s['issues'])}\n")
+    
+    if n_valid == 0:
         print("No valid samples found. Aborting.")
         return
         
-    if n < subset_size:
-        print(f"Warning: only {n} valid samples found, using all of them instead of {subset_size}.")
-        subset_size = n
+    if n_valid < subset_size:
+        print(f"Warning: only {n_valid} valid samples, using all instead of {subset_size}.")
+        subset_size = n_valid
         
-    subset_samples = random.sample(valid_samples, subset_size)
+    subset_samples = random.sample(filtered_samples, subset_size)
     
     train_end = int(0.80 * subset_size)
     splits = {
@@ -55,8 +88,6 @@ def make_subset(input_dir="Key_points", output_dir="data/subset_yolo_pose", raw_
         "val": subset_samples[train_end:]
     }
     
-    reports_dir = BASE_DIR / "outputs" / "reports"
-    reports_dir.mkdir(parents=True, exist_ok=True)
     with open(reports_dir / "subset_files.txt", "w") as f:
         for sample in subset_samples:
             f.write(f"{sample['json_file'].name} -> {sample['img_name']}\n")

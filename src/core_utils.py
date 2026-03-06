@@ -12,13 +12,13 @@ TARGET_KPS = ["withers", "back", "hook up", "hook down", "hip", "tail head", "pi
 KP_MAPPING = {k: k for k in TARGET_KPS}
 
 SKELETON = [
-    [0, 1], # withers-back
-    [1, 2], # back-hook up
-    [2, 3], # hook up-hook down
-    [2, 4], # hook up-hip
-    [4, 5], # hip-tail head
-    [5, 6], # tail head-pin up
-    [6, 7]  # pin up-pin down
+    [0, 1], # withers → back           (spine)
+    [1, 4], # back → hip               (spine)
+    [4, 2], # hip → hook up            (lateral branch up)
+    [4, 3], # hip → hook down          (lateral branch down)
+    [4, 5], # hip → tail head          (spine)
+    [5, 6], # tail head → pin up       (lateral branch up)
+    [5, 7], # tail head → pin down     (lateral branch down)
 ]
 
 def parse_filename_metadata(filename):
@@ -120,3 +120,38 @@ def parse_annotation_results(results):
                 
     kps_by_name = {kp["name"]: (kp["x"], kp["y"], kp["v"]) for kp in found_kps.values()}
     return {"bbox": bbox, "keypoints": kps_by_name}
+
+
+def validate_annotation(results):
+    """
+    Validates a Label Studio annotation for quality issues.
+    Returns dict with:
+      - valid (bool): True if annotation is clean
+      - issues (list[str]): Human-readable issue descriptions
+      - dup_keypoints (list[str]): Keypoint names that are duplicated
+    """
+    kp_counts = {}
+    for res in results:
+        if res.get("type") == "keypointlabels":
+            lbls = res.get("value", {}).get("keypointlabels", [])
+            if lbls:
+                name = lbls[0]
+                kp_counts[name] = kp_counts.get(name, 0) + 1
+
+    issues = []
+    dup_keypoints = []
+
+    for name, count in kp_counts.items():
+        if count > 1:
+            dup_keypoints.append(name)
+            issues.append(f"Duplicated '{name}' ({count}x)")
+
+    for tkp in TARGET_KPS:
+        if tkp not in kp_counts:
+            issues.append(f"Missing '{tkp}'")
+
+    return {
+        "valid": len(dup_keypoints) == 0,
+        "issues": issues,
+        "dup_keypoints": dup_keypoints,
+    }

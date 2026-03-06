@@ -8,8 +8,8 @@ def main():
     parser = argparse.ArgumentParser(description="Train YOLO Pose model for Cow Detection")
     parser.add_argument("--data", type=str, default="data/subset_yolo_pose/data.yaml", 
                         help="Path to data.yaml")
-    parser.add_argument("--epochs", type=int, default=10, 
-                        help="Number of epochs to train (default 10 for subset, use 100 for full)")
+    parser.add_argument("--epochs", type=int, default=100, 
+                        help="Number of epochs to train (default 100)")
     parser.add_argument("--imgsz", type=int, default=640, help="Image size")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--model", type=str, default="yolo11n-pose.pt", 
