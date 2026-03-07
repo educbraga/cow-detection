@@ -46,7 +46,7 @@ def main():
         project=output_project,
         name=run_name,
         exist_ok=True, # Overwrite run if rerun
-        device="cpu" # To ensure it runs everywhere, or omit for auto
+        device="mps" # Apple Silicon M4 (Metal Performance Shaders)
     )
     
     # --- Exportar melhor modelo para outputs/models/best_pose.pt ---
