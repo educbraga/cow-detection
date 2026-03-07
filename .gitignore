@@ -1,5 +1,4 @@
 # Project specific
-data/
 outputs/
 runs/
 *.pt
