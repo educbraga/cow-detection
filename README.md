@@ -246,9 +246,9 @@ Boas práticas:
 
 ## Checklist
 
-- [ ] Dataset em `data/yolo_pose/` no formato YOLO Pose
-- [ ] `data/cows-pose.yaml` configurado com `kpt_shape` correto
-- [ ] Treino YOLO Pose rodando e salvando `best.pt`
-- [ ] Export de keypoints para tabela
-- [ ] Features geradas e analisadas
+- [x] Dataset em `data/yolo_pose/` no formato YOLO Pose
+- [x] `data/cows-pose.yaml` configurado com `kpt_shape` correto
+- [x] Treino YOLO Pose rodando e salvando `best.pt`
+- [x] Export de keypoints para tabela
+- [x] Features geradas e analisadas
 - [ ] Classificador treinado e avaliado
