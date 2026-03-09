@@ -23,15 +23,33 @@ SKELETON = [
 
 def parse_filename_metadata(filename):
     """
-    Parses cow detection filenames.
+    Parses cow detection filenames. Supports 3 patterns:
+    1. cow_id_YYYY_MM_DD_HH_MM_SS_cam_ID_station_id.jpg
+    2. cam_ID_XX_YYYYMMDDHHMMSS_station_id_cam_ID.jpg (RLC pattern)
+    3. YYYYMMDD_HHMMSS_station_id_cam_ID.jpg
     """
     name = filename
-    if name.startswith("RLC4_00_"):
-        name = name[8:]
-        
-    pattern = r"^(?P<date>\d{8})_(?P<time>\d{6})_(?P<station>baia\d+)_(?P<cam>[A-Za-z0-9]+)\.jpe?g$"
-    match = re.match(pattern, name, re.IGNORECASE)
     
+    # Pattern 1: cow_id_YYYY_MM_DD_HH_MM_SS_cam_ID_station_id.jpg
+    p1 = r"^(?P<cow_id>\d+)_(?P<date>\d{4}_\d{2}_\d{2})_(?P<time>\d{2}_\d{2}_\d{2})_(?P<cam>[A-Za-z0-9]+)_(?P<station>baia\d+)\.jpe?g$"
+    match = re.match(p1, name, re.IGNORECASE)
+    if match:
+        data = match.groupdict()
+        data["date"] = data["date"].replace("_", "")
+        data["time"] = data["time"].replace("_", "")
+        return data
+    
+    # Pattern 2: cam_ID_XX_YYYYMMDDHHMMSS_station_id_cam_ID.jpg (RLC*)
+    p2 = r"^(?P<cam_prefix>[A-Za-z]+\d+)_\d+_(?P<date>\d{8})(?P<time>\d{6})_(?P<station>baia\d+)_(?P<cam>[A-Za-z0-9]+)\.jpe?g$"
+    match = re.match(p2, name, re.IGNORECASE)
+    if match:
+        data = match.groupdict()
+        data["cow_id"] = None
+        return data
+    
+    # Pattern 3: YYYYMMDD_HHMMSS_station_id_cam_ID.jpg
+    p3 = r"^(?P<date>\d{8})_(?P<time>\d{6})_(?P<station>baia\d+)_(?P<cam>[A-Za-z0-9]+)\.jpe?g$"
+    match = re.match(p3, name, re.IGNORECASE)
     if match:
         data = match.groupdict()
         data["cow_id"] = None

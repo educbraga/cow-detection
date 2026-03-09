@@ -1,0 +1,9 @@
+path: /Users/eduardobraga/www/ai/cow-detection/data/subset_yolo_pose
+train: images/train
+val: images/val
+test: images/val
+kpt_shape:
+- 8
+- 3
+names:
+  0: cow
