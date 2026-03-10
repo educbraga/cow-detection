@@ -9,6 +9,7 @@ import json
 import joblib
 import math
 import sys
+import re
 from pathlib import Path
 
 import matplotlib
@@ -22,7 +23,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (accuracy_score, classification_report,
                              confusion_matrix, f1_score, make_scorer,
                              top_k_accuracy_score)
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.svm import SVC
 from ultralytics import YOLO
@@ -152,6 +153,37 @@ def main():
                 feats = extract_features_from_keypoints(kps_dict)
                 feats["cow_id"] = cow_id
                 feats["image"] = img_path.name
+                
+                # Parse session_id from filename
+                stem = img_path.stem
+                station_id = "unknown"
+                camera_id = "unknown"
+                timestamp_str = "unknown"
+                
+                # Try Pattern 1: YYYYMMDD_HHMMSS_baiaXX_IPC#
+                m1 = re.match(r'^(\d{8})_(\d{6})_(baia\d+)_(IPC\d+)$', stem)
+                if m1:
+                    date_str, time_str, station_id, camera_id = m1.groups()
+                    timestamp_str = f"{date_str}{time_str}"
+                else:
+                    # Try Pattern 2: RLC#_00_YYYYMMDDHHMMSS_baiaX_RLC#
+                    m2 = re.match(r'^(RLC\d+)_00_(\d{14})_(baia\d+)_(RLC\d+)$', stem)
+                    if m2:
+                        _, timestamp_str, station_id, camera_id = m2.groups()
+                
+                if timestamp_str != "unknown":
+                    try:
+                        # Convert to datetime and truncate to day
+                        dt = pd.to_datetime(timestamp_str, format="%Y%m%d%H%M%S")
+                        time_window = dt.strftime("%Y%m%d")
+                        session_id = f"{station_id}_{camera_id}_{time_window}"
+                    except Exception:
+                        session_id = f"unknown_{stem}"
+                else:
+                    session_id = f"unknown_{stem}"
+
+                feats["session_id"] = session_id
+                    
                 rows.append(feats)
             except Exception as e:
                 print(f"  Error {img_path.name}: {e}")
@@ -164,7 +196,7 @@ def main():
     print(f"Total remaining samples: {len(df)} (from {len(cow_dirs)} cows)")
 
     # ── 2. Prepare X, y ──
-    meta_cols = ["cow_id", "image"]
+    meta_cols = ["cow_id", "image", "session_id"]
     kp_raw_cols = [c for c in df.columns if c.startswith("kp_")]  # raw coords are scale-dependent
     feature_cols = [c for c in df.columns if c not in meta_cols + kp_raw_cols
                     and df[c].dtype in ["float64", "float32", "int64"]]
@@ -196,7 +228,30 @@ def main():
         "SVM_RBF": SVC(kernel="rbf", probability=True, random_state=args.seed),
     }
 
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=args.seed)
+    groups = df_clean["session_id"].values
+    cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=args.seed)
+    
+    # --- Logging Fold Statistics ---
+    print(f"\n{'='*50}")
+    print("Session-Aware K-Fold Splitting Details")
+    print(f"{'='*50}")
+    unique_sessions = df_clean["session_id"].nunique()
+    print(f"Total images for training: {len(df_clean)}")
+    print(f"Total unique sessions:     {unique_sessions}")
+    avg_images = len(df_clean) / unique_sessions if unique_sessions > 0 else 0
+    print(f"Average images per session: {avg_images:.2f}")
+    
+    for fold_idx, (train_idx, val_idx) in enumerate(cv.split(X_scaled, y, groups=groups)):
+        train_sessions = set(groups[train_idx])
+        val_sessions = set(groups[val_idx])
+        overlap = train_sessions.intersection(val_sessions)
+        
+        print(f"\nFold {fold_idx + 1}:")
+        print(f"  Train: {len(train_idx)} images, {len(train_sessions)} sessions")
+        print(f"  Val:   {len(val_idx)} images, {len(val_sessions)} sessions")
+        print(f"  Overlap (Train ∩ Val): {len(overlap)} sessions", "✓" if len(overlap) == 0 else "❌ WARNING LEAKAGE")
+        assert len(overlap) == 0, f"Data leakage detected in fold {fold_idx+1}: {overlap}"
+
     results = {}
 
     # Top-K scorers (cap k at n_classes)
@@ -214,13 +269,13 @@ def main():
         X_in = X_scaled if name != "RandomForest" else X  # RF doesn't need scaling
 
         # Cross-validation for accuracy
-        cv_scores = cross_val_score(clf, X_in, y, cv=cv, scoring="accuracy")
+        cv_scores = cross_val_score(clf, X_in, y, cv=cv, scoring="accuracy", groups=groups)
         print(f"  CV Accuracy:  {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
 
         # Cross-validation for Top-K accuracy
         cv_topk = {}
         for k, scorer in top_k_scorers.items():
-            scores = cross_val_score(clf, X_in, y, cv=cv, scoring=scorer)
+            scores = cross_val_score(clf, X_in, y, cv=cv, scoring=scorer, groups=groups)
             cv_topk[k] = scores
             print(f"  CV Top-{k} Acc: {scores.mean():.4f} ± {scores.std():.4f}")
 
