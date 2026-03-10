@@ -6,4 +6,5 @@ pillow
 pyyaml
 pandas
 scikit-learn
+joblib
 seaborn

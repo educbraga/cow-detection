@@ -68,9 +68,12 @@ cam_ID_XX_YYYYMMDDHHMMSS_station_id_cam_ID.jpg      ← formato RLC
 │   ├── evaluate_pose.py            # 4. Avaliar o modelo
 │   ├── extract_features.py         # 5. Extrair features geométricas
 │   ├── analyze_features.py         # 6. Análise descritiva
-│   └── train_classifier.py         # 7. Treinar e avaliar classificador
+│   ├── train_classifier.py         # 7. Treinar e avaliar classificador
+│   └── predict.py                  # 8. Identificar vaca em nova imagem
 ├── outputs/
-│   ├── models/best_pose.pt         # (gerado) modelo treinado
+│   ├── models/
+│   │   ├── best_pose.pt            # (gerado) modelo YOLO Pose
+│   │   └── cow_classifier.joblib   # (gerado) classificador treinado
 │   ├── reports/                    # (gerado) métricas e relatórios
 │   └── figures/                    # (gerado) gráficos
 ├── docs/
