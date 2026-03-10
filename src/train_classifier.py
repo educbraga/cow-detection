@@ -6,6 +6,7 @@ Steps 5 & 6 of the challenge:
 """
 import argparse
 import json
+import joblib
 import math
 import sys
 from pathlib import Path
@@ -289,9 +290,24 @@ def main():
             f.write(f"| {n} | {r['cv_accuracy_mean']:.4f} | {r['cv_accuracy_std']:.4f} | {r['train_f1_macro']:.4f} | {r['train_top3_accuracy']:.4f} |\n")
         f.write(f"\n> Baseline (chance): {1/n_classes:.4f}\n")
 
+    # ── 7. Save trained models for inference ──
+    models_dir = out / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    
+    classifier_bundle = {
+        "classifier": classifiers["RandomForest"],
+        "scaler": scaler,
+        "label_encoder": le,
+        "feature_names": selected,
+    }
+    bundle_path = models_dir / "cow_classifier.joblib"
+    joblib.dump(classifier_bundle, bundle_path)
+    print(f"\nClassifier saved to: {bundle_path}")
+
     print(f"\n{'='*50}")
     print("CLASSIFICATION COMPLETE")
     print(f"{'='*50}")
+    print(f"Classifier: {bundle_path}")
     print(f"Report: {report_dir / 'classification_results.json'}")
     print(f"Summary: {report_dir / 'classification_summary.md'}")
     print(f"Figures: {fig_dir}")

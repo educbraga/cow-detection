@@ -243,11 +243,48 @@ python3 src/train_classifier.py \
 
 ---
 
+### Passo 8 — Identificar uma vaca em uma nova imagem
+
+Após treinar o classificador (passo 7), você pode passar qualquer imagem para descobrir qual vaca está nela:
+
+```bash
+python3 src/predict.py --image caminho/para/imagem.jpg
+```
+
+**Exemplo de saída:**
+
+```
+📷 Image: 20260101_064610_baia19_IPC2.jpg
+🐄 Detected 1 cow(s)
+📍 Keypoints detected: 8/8
+
+========================================
+🏆 PREDICTION — Top 3
+========================================
+  1. Cow 1106  ████████████████████████████████░░░░░░░░░░░░░░░░░░  65.5%
+  2. Cow 1397  ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  7.5%
+  3. Cow 1456  ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  6.5%
+
+→ Best guess: Cow **1106** (65.5% confidence)
+```
+
+**Argumentos opcionais:**
+
+| Argumento      | Default                                | Descrição                 |
+| -------------- | -------------------------------------- | ------------------------- |
+| `--pose-model` | `outputs/models/best_pose.pt`          | Modelo YOLO Pose          |
+| `--classifier` | `outputs/models/cow_classifier.joblib` | Classificador treinado    |
+| `--top-k`      | `3`                                    | Quantas predições mostrar |
+| `--conf`       | `0.25`                                 | Limiar de confiança YOLO  |
+
+---
+
 ## Scripts auxiliares
 
 | Script                     | Descrição                                                                               |
 | -------------------------- | --------------------------------------------------------------------------------------- |
 | `core_utils.py`            | Funções compartilhadas (parser de filenames, constantes). **Não executar diretamente.** |
+| `predict.py`               | Identifica qual vaca está em uma imagem (requer modelo treinado)                        |
 | `convert_to_yolo_pose.py`  | Conversão alternativa (dataset completo, sem subset)                                    |
 | `inspect_dataset.py`       | Inspeção visual dos dados                                                               |
 | `sanity_check.py`          | Checagem de sanidade do dataset                                                         |
