@@ -20,7 +20,8 @@ import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (accuracy_score, classification_report,
-                             confusion_matrix, f1_score, top_k_accuracy_score)
+                             confusion_matrix, f1_score, make_scorer,
+                             top_k_accuracy_score)
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.svm import SVC
@@ -91,7 +92,10 @@ def main():
     parser.add_argument("--model", type=str, default="outputs/models/best_pose.pt")
     parser.add_argument("--dataset", type=str, default="data/dataset_classificação")
     parser.add_argument("--output-dir", type=str, default="outputs")
-    parser.add_argument("--conf", type=float, default=0.25)
+    parser.add_argument("--conf", type=float, default=0.25,
+                        help="YOLO keypoint confidence threshold (per-keypoint)")
+    parser.add_argument("--det-conf", type=float, default=0.5,
+                        help="Minimum YOLO detection box confidence to keep a sample")
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -116,16 +120,26 @@ def main():
     print(f"Found {len(cow_dirs)} cow classes")
 
     rows = []
+    total_images = 0
+    removed_low_det_conf = 0
     for cow_dir in cow_dirs:
         cow_id = cow_dir.name
         imgs = sorted(list(cow_dir.glob("*.jpg")) + list(cow_dir.glob("*.jpeg")))
         for img_path in imgs:
+            total_images += 1
             try:
                 results = model(str(img_path), conf=args.conf, verbose=False)
                 if not results or not results[0].keypoints or len(results[0].keypoints) == 0:
                     continue
                 r = results[0]
                 best = r.boxes.conf.argmax().item() if r.boxes is not None and len(r.boxes) > 0 else 0
+
+                # ── Detection confidence filter ──
+                det_confidence = float(r.boxes.conf[best].cpu())
+                if det_confidence < args.det_conf:
+                    removed_low_det_conf += 1
+                    continue
+
                 kps_data = r.keypoints.data[best].cpu().numpy()
                 kps_dict = {}
                 for i, name in enumerate(KP_NAMES):
@@ -145,7 +159,9 @@ def main():
 
     df = pd.DataFrame(rows)
     df.to_csv(out / "reports" / "classification_features.csv", index=False)
-    print(f"\nTotal samples: {len(df)} (from {len(cow_dirs)} cows)")
+    print(f"\nTotal images scanned: {total_images}")
+    print(f"Samples removed (low det confidence < {args.det_conf:.2f}): {removed_low_det_conf}")
+    print(f"Total remaining samples: {len(df)} (from {len(cow_dirs)} cows)")
 
     # ── 2. Prepare X, y ──
     meta_cols = ["cow_id", "image"]
@@ -183,6 +199,13 @@ def main():
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=args.seed)
     results = {}
 
+    # Top-K scorers (cap k at n_classes)
+    top_ks = {k: min(k, n_classes) for k in [1, 3, 5]}
+    top_k_scorers = {
+        k: make_scorer(top_k_accuracy_score, k=kk, response_method="predict_proba")
+        for k, kk in top_ks.items()
+    }
+
     for name, clf in classifiers.items():
         print(f"\n{'='*50}")
         print(f"Training: {name}")
@@ -192,27 +215,36 @@ def main():
 
         # Cross-validation for accuracy
         cv_scores = cross_val_score(clf, X_in, y, cv=cv, scoring="accuracy")
-        print(f"  CV Accuracy: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
+        print(f"  CV Accuracy:  {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
+
+        # Cross-validation for Top-K accuracy
+        cv_topk = {}
+        for k, scorer in top_k_scorers.items():
+            scores = cross_val_score(clf, X_in, y, cv=cv, scoring=scorer)
+            cv_topk[k] = scores
+            print(f"  CV Top-{k} Acc: {scores.mean():.4f} ± {scores.std():.4f}")
 
         # Full fit for final metrics & confusion matrix
         clf.fit(X_in, y)
         y_pred = clf.predict(X_in)
-        y_proba = clf.predict_proba(X_in) if hasattr(clf, "predict_proba") else None
 
         acc = accuracy_score(y, y_pred)
         f1 = f1_score(y, y_pred, average="macro")
-        top3 = top_k_accuracy_score(y, y_proba, k=min(3, n_classes)) if y_proba is not None else "N/A"
 
         print(f"  Train Accuracy: {acc:.4f}")
         print(f"  Train F1-macro: {f1:.4f}")
-        print(f"  Train Top-3 Acc: {top3:.4f}" if isinstance(top3, float) else f"  Train Top-3 Acc: {top3}")
 
         results[name] = {
             "cv_accuracy_mean": round(float(cv_scores.mean()), 4),
             "cv_accuracy_std": round(float(cv_scores.std()), 4),
+            "cv_top1_mean": round(float(cv_topk[1].mean()), 4),
+            "cv_top1_std": round(float(cv_topk[1].std()), 4),
+            "cv_top3_mean": round(float(cv_topk[3].mean()), 4),
+            "cv_top3_std": round(float(cv_topk[3].std()), 4),
+            "cv_top5_mean": round(float(cv_topk[5].mean()), 4),
+            "cv_top5_std": round(float(cv_topk[5].std()), 4),
             "train_accuracy": round(float(acc), 4),
             "train_f1_macro": round(float(f1), 4),
-            "train_top3_accuracy": round(float(top3), 4) if isinstance(top3, float) else top3,
         }
 
         # Confusion matrix
@@ -272,6 +304,8 @@ def main():
         "n_classes": n_classes,
         "n_features": len(selected),
         "features_used": selected,
+        "det_conf_threshold": args.det_conf,
+        "samples_removed_low_conf": removed_low_det_conf,
         "results": results,
     }
     with open(report_dir / "classification_results.json", "w") as f:
@@ -281,13 +315,15 @@ def main():
     with open(report_dir / "classification_summary.md", "w") as f:
         f.write("# Classification Results — Cow Identification\n\n")
         f.write(f"- **Samples**: {len(df_clean)} (from {n_classes} cows)\n")
+        f.write(f"- **Detection confidence threshold**: {args.det_conf}\n")
+        f.write(f"- **Samples removed (low det confidence)**: {removed_low_det_conf}\n")
         f.write(f"- **Features**: {len(selected)} (angles + ratios, scale-invariant)\n")
         f.write(f"- **Evaluation**: 5-fold Stratified Cross-Validation\n\n")
         f.write("## Results\n\n")
-        f.write("| Classifier | CV Accuracy | ± Std | Train F1-macro | Train Top-3 |\n")
-        f.write("|---|---|---|---|---|\n")
+        f.write("| Classifier | CV Top-1 | CV Top-3 | CV Top-5 | CV Accuracy ± Std | Train F1-macro |\n")
+        f.write("|---|---|---|---|---|---|\n")
         for n, r in results.items():
-            f.write(f"| {n} | {r['cv_accuracy_mean']:.4f} | {r['cv_accuracy_std']:.4f} | {r['train_f1_macro']:.4f} | {r['train_top3_accuracy']:.4f} |\n")
+            f.write(f"| {n} | {r['cv_top1_mean']:.4f} | {r['cv_top3_mean']:.4f} | {r['cv_top5_mean']:.4f} | {r['cv_accuracy_mean']:.4f} ± {r['cv_accuracy_std']:.4f} | {r['train_f1_macro']:.4f} |\n")
         f.write(f"\n> Baseline (chance): {1/n_classes:.4f}\n")
 
     # ── 7. Save trained models for inference ──
