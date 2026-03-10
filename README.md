@@ -87,16 +87,17 @@ A pasta `src/` contém os scripts principais do pipeline, desde a preparação d
 
 Aqui está a ordem sugerida e para que cada um serve:
 
-| Ordem | Script | O que ele faz? |
-| :---: | :--- | :--- |
-| **1º** | `validate_annotations.py` / `inspect_dataset.py` | **Inspeção de Dados:** Ler as anotações geradas (Label Studio, etc.), verificar se existem *keypoints* ausentes ou duplicados nas imagens e garantir que o dataset está saudável. |
-| **2º** | `convert_to_yolo_pose.py` | **Conversão:** Pega as anotações limpas e as converte para o formato de texto que o `YOLO Pose` exige (coordenadas das tags, classes e visibilidade dos pontos). |
-| **3º** | `make_subset.py` | **Divisão de Dados:** Separa o dataset limpo em um *subconjunto* ou em pastas finais de treinamento (`train`) e validação (`val`). |
-| **4º** | `train_pose.py` | **Treinamento (Modelo de IA):** Inicia o treinamento do modelo YOLO11-Pose para aprender a identificar os pontos anatômicos das vacas na imagem. Salva o melhor modelo em `.pt`. |
-| **5º** | `evaluate_pose.py` / `validate.py` | **Avaliação da IA:** Pega o modelo que você acabou de treinar e avalia nas imagens de teste para calcular as métricas de performance (mAP, Precisão, Recall). |
-| **6º** | `extract_features.py` | **Extração de Características:** Roda o modelo treinado em todas as imagens para capturar as coordenadas e, com elas, calcula as **features geométricas** (ângulos, distâncias e proporções). Salva o resultado em `features.csv`. |
-| **7º** | `analyze_features.py` | **Análise Científica:** Lê o arquivo `features.csv` gerado e cria os gráficos estatísticos (mapas de calor de correlação e histogramas). O objetivo é descobrir quais medidas (ex: ângulo do quadril) servem como "impressão digital" geométrica do animal. |
+| Ordem  | Script                                           | O que ele faz?                                                                                                                                                                                                                                              |
+| :----: | :----------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1º** | `validate_annotations.py` / `inspect_dataset.py` | **Inspeção de Dados:** Ler as anotações geradas (Label Studio, etc.), verificar se existem _keypoints_ ausentes ou duplicados nas imagens e garantir que o dataset está saudável.                                                                           |
+| **2º** | `convert_to_yolo_pose.py`                        | **Conversão:** Pega as anotações limpas e as converte para o formato de texto que o `YOLO Pose` exige (coordenadas das tags, classes e visibilidade dos pontos).                                                                                            |
+| **3º** | `make_subset.py`                                 | **Divisão de Dados:** Separa o dataset limpo em um _subconjunto_ ou em pastas finais de treinamento (`train`) e validação (`val`).                                                                                                                          |
+| **4º** | `train_pose.py`                                  | **Treinamento (Modelo de IA):** Inicia o treinamento do modelo YOLO11-Pose para aprender a identificar os pontos anatômicos das vacas na imagem. Salva o melhor modelo em `.pt`.                                                                            |
+| **5º** | `evaluate_pose.py` / `validate.py`               | **Avaliação da IA:** Pega o modelo que você acabou de treinar e avalia nas imagens de teste para calcular as métricas de performance (mAP, Precisão, Recall).                                                                                               |
+| **6º** | `extract_features.py`                            | **Extração de Características:** Roda o modelo treinado em todas as imagens para capturar as coordenadas e, com elas, calcula as **features geométricas** (ângulos, distâncias e proporções). Salva o resultado em `features.csv`.                          |
+| **7º** | `analyze_features.py`                            | **Análise Científica:** Lê o arquivo `features.csv` gerado e cria os gráficos estatísticos (mapas de calor de correlação e histogramas). O objetivo é descobrir quais medidas (ex: ângulo do quadril) servem como "impressão digital" geométrica do animal. |
 
 > **💡 Scripts Extras e Auxiliares:**
-> * `core_utils.py`: **Não deve ser executado diretamente**. Contém funções vitais que são importadas pelos outros scripts (como parseamento dos nomes bizarros dos arquivos, cálculos matemáticos de distância e ângulo).
-> * `visualize_predictions.py` / `debug_visualize.py`: Scripts visuais! Eles desenham os pontinhos e as linhas de "esqueleto" em cima da foto da vaca. Muito úteis se você quiser "enxergar" o que a rede neural está prevendo no visual.
+>
+> - `core_utils.py`: **Não deve ser executado diretamente**. Contém funções vitais que são importadas pelos outros scripts (como parseamento dos nomes bizarros dos arquivos, cálculos matemáticos de distância e ângulo).
+> - `visualize_predictions.py` / `debug_visualize.py`: Scripts visuais! Eles desenham os pontinhos e as linhas de "esqueleto" em cima da foto da vaca. Muito úteis se você quiser "enxergar" o que a rede neural está prevendo no visual.
