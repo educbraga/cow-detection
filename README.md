@@ -1,5 +1,3 @@
-# WIP 👷‍♂️🏗️
-
 # Cows Challenge 🐄 — Keypoints + Identificação (YOLO Pose)
 
 Projeto de visão computacional para **detecção de keypoints em vacas (vista superior)** com **YOLO Pose (Ultralytics)**, extração de **features geométricas** e **classificação/identificação** de cada vaca.
@@ -19,85 +17,256 @@ Projeto de visão computacional para **detecção de keypoints em vacas (vista s
 
 ---
 
-## Dataset (visão geral)
+## Dataset
 
 - **30 vacas** na área de ordenha (_parlor milking station area_).
-- **50 imagens por vaca**.
-- Os nomes dos arquivos contêm informações como:
-  - `cow_id` (id da vaca)
-  - data/hora (`YYYY_MM_DD_HH_MM_SS` ou variações)
-  - `cam_ID` (id da câmera)
-  - `station_ID` (posição/estação no parlor)
+- **50 imagens por vaca** (1500 imagens no total).
+- **1030 anotações** de keypoints feitas no Label Studio.
 
-**Campos comuns:**
+### Keypoints anotados (8 pontos, vista superior)
 
-- `cow_id`: número/ID da vaca
-- `YYYY`: ano · `MM`: mês · `DD`: dia
-- `HH`: hora · `MM`: minuto · `SS`: segundo
-- `cam_ID`: número da câmera
-- `station_ID`: posição/estação
+`withers` · `back` · `hook up` · `hook down` · `hip` · `tail head` · `pin up` · `pin down`
 
-> Dica: como existem variações de padrão no nome, mantenha um parser único em `src/data/filename_parser.py`.
+<p align="center">
+  <img src="./docs/keypoints.jpg" alt="Diagrama dos keypoints" width="700" />
+</p>
+
+### Padrões de nome de arquivo
+
+```
+cow_id_YYYY_MM_DD_HH_MM_SS_cam_ID_station_id.jpg   ← com cow_id
+YYYYMMDD_HHMMSS_station_id_cam_ID.jpg               ← sem cow_id
+cam_ID_XX_YYYYMMDDHHMMSS_station_id_cam_ID.jpg      ← formato RLC
+```
+
+> O parser em `src/core_utils.py` reconhece todos os 3 formatos automaticamente.
 
 ---
 
-## Keypoints
+## Estrutura do Repositório
 
-Os keypoints representam pontos anatômicos (ex.: **Head, Neck, Withers, Back, Hook, Hip ridge, Tail head, Pin**).  
-A lista final (e a **ordem**) deve ser a mesma em:
-
-- ferramenta de anotação
-- `data/cows-pose.yaml` (config YOLO)
-- scripts de extração de features
-
-<p align="center">
-<img src="./docs/keypoints.jpg" alt="Diagrama dos keypoints" width="700" />
-</p>
-
-## 🚀 Como Executar o Projeto
-
-Se você acabou de clonar este repositório e quer rodar o projeto na sua máquina, siga o passo a passo abaixo. Todos os comandos devem ser executados no terminal, dentro da pasta raiz do projeto (`cow-detection`).
-
-### 1. Preparando o Ambiente
-
-**Criar e ativar o ambiente virtual (Python):**
-Recomendamos o uso do `venv` para manter as bibliotecas isoladas.
-
-```bash
-# Cria o ambiente virtual na pasta .venv
-python -m venv .venv
-
-# Ativa o ambiente virtual (Mac/Linux)
-source .venv/bin/activate
-# Se estiver no Windows, use: .venv\Scripts\activate
+```text
+.
+├── data/
+│   ├── raw_images/                 # 1029 imagens originais
+│   ├── dataset_classificação/      # 30 pastas (cow_id) × 50 imagens
+│   │   ├── 1106/
+│   │   ├── 1122/
+│   │   └── ...
+│   ├── subset_yolo_pose/           # (gerado) dataset YOLO Pose
+│   │   ├── images/{train,val}/
+│   │   ├── labels/{train,val}/
+│   │   └── data.yaml
+│   └── processed/
+│       └── features.csv            # (gerado) features extraídas
+├── Key_points/                     # 1030 JSONs do Label Studio
+├── src/
+│   ├── core_utils.py               # Funções compartilhadas (NÃO executar)
+│   ├── validate.py                 # 1. Validar anotações
+│   ├── make_subset.py              # 2. Preparar dataset YOLO
+│   ├── train_pose.py               # 3. Treinar YOLO Pose
+│   ├── evaluate_pose.py            # 4. Avaliar o modelo
+│   ├── extract_features.py         # 5. Extrair features geométricas
+│   ├── analyze_features.py         # 6. Análise descritiva
+│   └── train_classifier.py         # 7. Treinar e avaliar classificador
+├── outputs/
+│   ├── models/best_pose.pt         # (gerado) modelo treinado
+│   ├── reports/                    # (gerado) métricas e relatórios
+│   └── figures/                    # (gerado) gráficos
+├── docs/
+├── requirements.txt
+└── README.md
 ```
 
-**Instalar as dependências:**
-Com o ambiente ativado, instale as bibliotecas necessárias (como `ultralytics`, `pandas`, `scikit-learn`, etc).
+---
+
+## 🚀 Guia Passo a Passo
+
+### Pré-requisitos
+
+- Python 3.10+
+- Mac com Apple Silicon (M1/M2/M3/M4) para aceleração via MPS, ou GPU NVIDIA
+
+### Passo 0 — Setup do ambiente
 
 ```bash
+# Clonar o repositório
+git clone <url-do-repo>
+cd cow-detection
+
+# Criar e ativar ambiente virtual
+python3 -m venv .venv
+source .venv/bin/activate    # Mac/Linux
+# .venv\Scripts\activate     # Windows
+
+# Instalar dependências
 pip install -r requirements.txt
 ```
 
+> **Dependências principais:** `ultralytics`, `numpy`, `pandas`, `scikit-learn`, `seaborn`, `matplotlib`, `opencv-python`, `pyyaml`
+
 ---
 
-### 2. A Ordem dos Scripts (`src/`)
+### Passo 1 — Validar as anotações
 
-A pasta `src/` contém os scripts principais do pipeline, desde a preparação dos dados até a extração de métricas. Eles foram desenhados para serem executados em uma sequência lógica.
+Verifica se os JSONs do Label Studio (`Key_points/`) têm todos os keypoints e se as imagens correspondentes existem em `data/raw_images/`.
 
-Aqui está a ordem sugerida e para que cada um serve:
+```bash
+source .venv/bin/activate
+python3 src/validate.py
+```
 
-| Ordem  | Script                                           | O que ele faz?                                                                                                                                                                                                                                              |
-| :----: | :----------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1º** | `validate_annotations.py` / `inspect_dataset.py` | **Inspeção de Dados:** Ler as anotações geradas (Label Studio, etc.), verificar se existem _keypoints_ ausentes ou duplicados nas imagens e garantir que o dataset está saudável.                                                                           |
-| **2º** | `convert_to_yolo_pose.py`                        | **Conversão:** Pega as anotações limpas e as converte para o formato de texto que o `YOLO Pose` exige (coordenadas das tags, classes e visibilidade dos pontos).                                                                                            |
-| **3º** | `make_subset.py`                                 | **Divisão de Dados:** Separa o dataset limpo em um _subconjunto_ ou em pastas finais de treinamento (`train`) e validação (`val`).                                                                                                                          |
-| **4º** | `train_pose.py`                                  | **Treinamento (Modelo de IA):** Inicia o treinamento do modelo YOLO11-Pose para aprender a identificar os pontos anatômicos das vacas na imagem. Salva o melhor modelo em `.pt`.                                                                            |
-| **5º** | `evaluate_pose.py` / `validate.py`               | **Avaliação da IA:** Pega o modelo que você acabou de treinar e avalia nas imagens de teste para calcular as métricas de performance (mAP, Precisão, Recall).                                                                                               |
-| **6º** | `extract_features.py`                            | **Extração de Características:** Roda o modelo treinado em todas as imagens para capturar as coordenadas e, com elas, calcula as **features geométricas** (ângulos, distâncias e proporções). Salva o resultado em `features.csv`.                          |
-| **7º** | `analyze_features.py`                            | **Análise Científica:** Lê o arquivo `features.csv` gerado e cria os gráficos estatísticos (mapas de calor de correlação e histogramas). O objetivo é descobrir quais medidas (ex: ângulo do quadril) servem como "impressão digital" geométrica do animal. |
+**Saída:** `outputs/reports/validation_report.json`
 
-> **💡 Scripts Extras e Auxiliares:**
->
-> - `core_utils.py`: **Não deve ser executado diretamente**. Contém funções vitais que são importadas pelos outros scripts (como parseamento dos nomes bizarros dos arquivos, cálculos matemáticos de distância e ângulo).
-> - `visualize_predictions.py` / `debug_visualize.py`: Scripts visuais! Eles desenham os pontinhos e as linhas de "esqueleto" em cima da foto da vaca. Muito úteis se você quiser "enxergar" o que a rede neural está prevendo no visual.
+---
+
+### Passo 2 — Preparar o dataset YOLO Pose
+
+Filtra anotações inválidas (keypoints duplicados/ausentes), seleciona 150 amostras, divide em train/val (80/20), converte para formato YOLO Pose e copia as imagens.
+
+```bash
+python3 src/make_subset.py
+```
+
+**Saída:** `data/subset_yolo_pose/` com `images/`, `labels/` e `data.yaml`
+
+---
+
+### Passo 3 — Treinar o modelo YOLO Pose
+
+Treina o modelo `yolo11n-pose` por 100 épocas usando MPS (Apple Silicon).
+
+```bash
+python3 src/train_pose.py \
+    --data data/subset_yolo_pose/data.yaml \
+    --epochs 100 \
+    --imgsz 640
+```
+
+> ⏱️ ~17 minutos no Mac Mini M4. Se não tiver Apple Silicon, edite `src/train_pose.py` linha 49: troque `device="mps"` por `device="cpu"` ou `device="0"` (GPU NVIDIA).
+
+**Saída:** `outputs/models/best_pose.pt`
+
+---
+
+### Passo 4 — Avaliar o modelo
+
+Roda validação formal no conjunto de teste e salva métricas (mAP, Precision, Recall).
+
+```bash
+python3 src/evaluate_pose.py \
+    --model outputs/models/best_pose.pt \
+    --data data/subset_yolo_pose/data.yaml
+```
+
+**Saída:** `outputs/reports/metrics.json` e `outputs/reports/summary.md`
+
+**Métricas esperadas:**
+
+| Métrica   | Bounding Box | Keypoint Pose |
+| --------- | ------------ | ------------- |
+| mAP50     | 0.995        | 0.995         |
+| mAP50-95  | 0.933        | 0.876         |
+| Precision | 0.998        | 0.998         |
+| Recall    | 1.000        | 1.000         |
+
+---
+
+### Passo 5 — Extrair features geométricas
+
+Roda inferência do modelo em todas as imagens e calcula features geométricas (5 ângulos, 9 distâncias, 9 proporções normalizadas).
+
+```bash
+python3 src/extract_features.py \
+    --model outputs/models/best_pose.pt \
+    --images data/raw_images \
+    --output data/processed/features.csv
+```
+
+**Saída:** `data/processed/features.csv` (1 linha por imagem, 39 colunas)
+
+---
+
+### Passo 6 — Análise descritiva das features
+
+Gera estatísticas, histogramas, heatmap de correlação, boxplots por estação e pairplots.
+
+```bash
+python3 src/analyze_features.py \
+    --input data/processed/features.csv \
+    --output-dir outputs/figures \
+    --report outputs/reports/feature_analysis.md
+```
+
+**Saída:**
+
+- `outputs/figures/histograms_angles.png`
+- `outputs/figures/histograms_distances.png`
+- `outputs/figures/correlation_heatmap.png`
+- `outputs/figures/pairplot_angles.png`
+- `outputs/figures/boxplot_angle_*_by_station.png`
+- `outputs/reports/feature_analysis.md`
+
+---
+
+### Passo 7 — Treinar e avaliar o classificador
+
+Extrai features das 1500 imagens organizadas por cow_id (pasta `data/dataset_classificação/`), treina 3 classificadores (LogisticRegression, RandomForest, SVM) com validação cruzada 5-fold, e gera confusion matrices.
+
+> **Pré-requisito:** A pasta `data/dataset_classificação/` deve conter 30 subpastas (uma por vaca), cada uma com ~50 imagens. O nome da pasta é o `cow_id`.
+
+```bash
+python3 src/train_classifier.py \
+    --model outputs/models/best_pose.pt \
+    --dataset "data/dataset_classificação" \
+    --output-dir outputs
+```
+
+> ⏱️ ~2 minutos (inferência nas 1500 imagens + treino dos classificadores)
+
+**Saída:**
+
+- `outputs/reports/classification_results.json`
+- `outputs/reports/classification_summary.md`
+- `outputs/reports/classification_features.csv`
+- `outputs/figures/confusion_matrix_*.png`
+- `outputs/figures/feature_importance_rf.png`
+- `outputs/figures/classifier_comparison.png`
+
+**Resultados esperados:**
+
+| Classificador      | CV Accuracy (5-fold) | Baseline (chance) |
+| ------------------ | -------------------- | ----------------- |
+| RandomForest       | ~22%                 | 3.3%              |
+| LogisticRegression | ~20%                 | 3.3%              |
+| SVM (RBF)          | ~18%                 | 3.3%              |
+
+---
+
+## Scripts auxiliares
+
+| Script                     | Descrição                                                                               |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `core_utils.py`            | Funções compartilhadas (parser de filenames, constantes). **Não executar diretamente.** |
+| `convert_to_yolo_pose.py`  | Conversão alternativa (dataset completo, sem subset)                                    |
+| `inspect_dataset.py`       | Inspeção visual dos dados                                                               |
+| `sanity_check.py`          | Checagem de sanidade do dataset                                                         |
+| `visualize_predictions.py` | Visualiza predições do modelo sobre as imagens                                          |
+| `debug_visualize.py`       | Debug visual com keypoints e esqueleto                                                  |
+| `visualize_filtered.py`    | Visualiza amostras filtradas                                                            |
+
+---
+
+## Referência
+
+> _Objective dairy cow mobility analysis and scoring system using computer vision–based keypoint detection technique from top-view 2-dimensional videos_, JDS, 2024.
+> https://doi.org/10.3168/jds.2024-25545
+
+## Checklist
+
+- [x] Dataset em formato YOLO Pose
+- [x] `data.yaml` configurado com `kpt_shape` correto
+- [x] Treino YOLO Pose com `best.pt` salvo
+- [x] Export de keypoints para tabela de features
+- [x] Features geradas e analisadas
+- [x] Classificador treinado e avaliado
