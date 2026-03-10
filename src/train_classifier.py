@@ -150,6 +150,8 @@ def main():
                             kps_dict[name] = (float(x), float(y))
                 if len(kps_dict) < 3:
                     continue
+                
+                # --- Original Sample ---
                 feats = extract_features_from_keypoints(kps_dict)
                 feats["cow_id"] = cow_id
                 feats["image"] = img_path.name
@@ -183,17 +185,44 @@ def main():
                     session_id = f"unknown_{stem}"
 
                 feats["session_id"] = session_id
-                    
                 rows.append(feats)
+                
+                # --- Synthetic Samples (Gaussian Noise, σ ≈ 2) ---
+                for _ in range(9):
+                    noisy_kps = {}
+                    for kp_name, (x, y) in kps_dict.items():
+                        noisy_kps[kp_name] = (x + np.random.normal(0, 2), y + np.random.normal(0, 2))
+                    
+                    noisy_feats = extract_features_from_keypoints(noisy_kps)
+                    noisy_feats["cow_id"] = cow_id
+                    noisy_feats["image"] = img_path.name
+                    noisy_feats["session_id"] = session_id
+                    rows.append(noisy_feats)
+                    
             except Exception as e:
                 print(f"  Error {img_path.name}: {e}")
         print(f"  cow {cow_id}: {sum(1 for r in rows if r['cow_id']==cow_id)} features extracted")
 
     df = pd.DataFrame(rows)
     df.to_csv(out / "reports" / "classification_features.csv", index=False)
-    print(f"\nTotal images scanned: {total_images}")
-    print(f"Samples removed (low det confidence < {args.det_conf:.2f}): {removed_low_det_conf}")
-    print(f"Total remaining samples: {len(df)} (from {len(cow_dirs)} cows)")
+    
+    # --- Augmentation Log Summary ---
+    total_valid_original = len(rows) // 10
+    total_synthetic = total_valid_original * 9
+    avg_per_cow = len(rows) / len(cow_dirs) if cow_dirs else 0
+    
+    print("\n" + "-"*35)
+    print("DATA AUGMENTATION SUMMARY")
+    print("-" * 35)
+    print(f"original samples:   {total_valid_original}")
+    print(f"synthetic samples:  {total_synthetic}")
+    print(f"final dataset size: {len(rows)}")
+    print(f"samples per cow (average): {avg_per_cow:.1f}")
+    print("-" * 35)
+    
+    print(f"\nTotal images scanned from disk: {total_images}")
+    print(f"Samples completely removed (low det confidence < {args.det_conf:.2f}): {removed_low_det_conf}")
+    print(f"Total remaining dataset rows (including synthetics): {len(df)} (from {len(cow_dirs)} cows)")
 
     # ── 2. Prepare X, y ──
     meta_cols = ["cow_id", "image", "session_id"]
