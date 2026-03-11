@@ -67,9 +67,11 @@ cam_ID_XX_YYYYMMDDHHMMSS_station_id_cam_ID.jpg      ← formato RLC
 │   ├── train_pose.py               # 3. Treinar YOLO Pose
 │   ├── evaluate_pose.py            # 4. Avaliar o modelo
 │   ├── extract_features.py         # 5. Extrair features geométricas
-│   ├── analyze_features.py         # 6. Análise descritiva
+│   ├── analyze_features.py         # 6. Análise descritiva por vaca
 │   ├── train_classifier.py         # 7. Treinar e avaliar classificador
-│   └── predict.py                  # 8. Identificar vaca em nova imagem
+│   ├── evaluate_classifier.py      # 8. Avaliação detalhada do classificador
+│   ├── predict.py                  # 9. Identificar vaca em nova imagem
+│   └── explore_fiftyone.py         # 10. Exploração interativa (FiftyOne)
 ├── outputs/
 │   ├── models/
 │   │   ├── best_pose.pt            # (gerado) modelo YOLO Pose
@@ -106,7 +108,7 @@ source .venv/bin/activate    # Mac/Linux
 pip install -r requirements.txt
 ```
 
-> **Dependências principais:** `ultralytics`, `numpy`, `pandas`, `scikit-learn`, `seaborn`, `matplotlib`, `opencv-python`, `pyyaml`
+> **Dependências principais:** `ultralytics`, `numpy`, `pandas`, `scikit-learn`, `seaborn`, `matplotlib`, `opencv-python`, `pyyaml`, `scipy`, `fiftyone`
 
 ---
 
@@ -242,11 +244,31 @@ python3 src/train_classifier.py \
 | ------------------ | -------------------- | ----------------- |
 | RandomForest       | ~22%                 | 3.3%              |
 | LogisticRegression | ~20%                 | 3.3%              |
-| SVM (RBF)          | ~18%                 | 3.3%              |
+| SVM (RBF)          | ~14%                 | 3.3%              |
 
 ---
 
-### Passo 8 — Identificar uma vaca em uma nova imagem
+### Passo 8 — Avaliar o classificador (detalhado)
+
+Gera avaliação detalhada com confusion matrix normalizada, acurácia por vaca, pares mais confundidos, distribuição de confiança e curva Top-K.
+
+```bash
+python3 src/evaluate_classifier.py
+```
+
+**Saída:**
+
+- `outputs/figures/confusion_matrix_normalized.png`
+- `outputs/figures/accuracy_per_cow.png`
+- `outputs/figures/top_confused_pairs.png`
+- `outputs/figures/confidence_distribution.png`
+- `outputs/figures/topk_accuracy_curve.png`
+- `outputs/reports/evaluation_report.md`
+- `outputs/reports/evaluation_metrics.json`
+
+---
+
+### Passo 9 — Identificar uma vaca em uma nova imagem
 
 Após treinar o classificador (passo 7), você pode passar qualquer imagem para descobrir qual vaca está nela:
 
@@ -288,6 +310,8 @@ python3 src/predict.py --image caminho/para/imagem.jpg
 | -------------------------- | --------------------------------------------------------------------------------------- |
 | `core_utils.py`            | Funções compartilhadas (parser de filenames, constantes). **Não executar diretamente.** |
 | `predict.py`               | Identifica qual vaca está em uma imagem (requer modelo treinado)                        |
+| `evaluate_classifier.py`   | Avaliação detalhada do classificador com relatório                                      |
+| `explore_fiftyone.py`      | Exploração interativa do dataset com FiftyOne (abre dashboard no browser)               |
 | `convert_to_yolo_pose.py`  | Conversão alternativa (dataset completo, sem subset)                                    |
 | `inspect_dataset.py`       | Inspeção visual dos dados                                                               |
 | `sanity_check.py`          | Checagem de sanidade do dataset                                                         |
