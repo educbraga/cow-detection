@@ -31,6 +31,10 @@ Projeto de visão computacional para **detecção de keypoints em vacas (vista s
   <img src="./docs/keypoints.jpg" alt="Diagrama dos keypoints" width="700" />
 </p>
 
+<p align="center">
+  <img src="./docs/fiftyone.png" alt="Dashboard FiftyOne" width="700" />
+</p>
+
 ### Padrões de nome de arquivo
 
 ```
