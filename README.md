@@ -196,7 +196,9 @@ python3 src/extract_features.py \
 
 ---
 
-### Passo 6 — Análise descritiva das features
+### Passo 6 — Análise descritiva das features ✅ Tarefa 4 do desafio
+
+> **Esta etapa cobre a Tarefa 4 do desafio: _Conduct a descriptive analysis of the features and its usability for identification_.**
 
 Gera estatísticas, histogramas, heatmap de correlação, boxplots por estação e pairplots.
 
