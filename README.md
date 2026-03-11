@@ -256,7 +256,7 @@ python3 src/train_classifier.py \
 
 > **Esta etapa cobre a Tarefa 6 do desafio: _Evaluate the model_.**
 
-Gera avaliação detalhada com confusion matrix normalizada, acurácia por vaca, pares mais confundidos, distribuição de confiança e curva Top-K. O relatório é salvo automaticamente em `outputs/reports/evaluation_report.md`.
+Gera avaliação detalhada com acurácia por vaca, pares mais confundidos e distribuição de confiança. O relatório é salvo automaticamente em `outputs/reports/evaluation_report.md`.
 
 ```bash
 python src/evaluate_classifier.py
