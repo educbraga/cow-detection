@@ -252,12 +252,14 @@ python3 src/train_classifier.py \
 
 ---
 
-### Passo 8 — Avaliar o classificador (detalhado)
+### Passo 8 — Avaliar o classificador ✅ Tarefa 6 do desafio
 
-Gera avaliação detalhada com confusion matrix normalizada, acurácia por vaca, pares mais confundidos, distribuição de confiança e curva Top-K.
+> **Esta etapa cobre a Tarefa 6 do desafio: _Evaluate the model_.**
+
+Gera avaliação detalhada com confusion matrix normalizada, acurácia por vaca, pares mais confundidos, distribuição de confiança e curva Top-K. O relatório é salvo automaticamente em `outputs/reports/evaluation_report.md`.
 
 ```bash
-python3 src/evaluate_classifier.py
+python src/evaluate_classifier.py
 ```
 
 **Saída:**
@@ -269,6 +271,16 @@ python3 src/evaluate_classifier.py
 - `outputs/figures/topk_accuracy_curve.png`
 - `outputs/reports/evaluation_report.md`
 - `outputs/reports/evaluation_metrics.json`
+
+#### Visualização interativa (opcional)
+
+Para explorar as predições visualmente em uma interface interativa (abre uma janela no navegador via FiftyOne):
+
+```bash
+python src/explore_fiftyone.py
+```
+
+> 💡 A janela do FiftyOne permite navegar pelas imagens, ver os keypoints detectados, as predições do classificador e os erros de identificação de forma visual e interativa.
 
 ---
 
